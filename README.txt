@@ -4,6 +4,7 @@ Linux: CMake
 
 Сборка на Windows:
 1) Из этой папки выполнить
+mkdir build
 cmake -B build
 2) Открыть сгенерированный проект VS /build/emulator.sln
 3) В VS собрать проект emulator (выбираем решение emulator - ПКМ - Build/Собрать)
