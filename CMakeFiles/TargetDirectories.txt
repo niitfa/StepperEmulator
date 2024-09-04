@@ -1,0 +1,3 @@
+/home/kirill/Documents/GitHub/StepperEmulator/CMakeFiles/emulator.dir
+/home/kirill/Documents/GitHub/StepperEmulator/CMakeFiles/edit_cache.dir
+/home/kirill/Documents/GitHub/StepperEmulator/CMakeFiles/rebuild_cache.dir

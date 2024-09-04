@@ -52,9 +52,9 @@ void StepperTCPServer::ThreadHandler()
 		this->mtx.lock();
 		memcpy(this->message, this->buffer, kMessageSize);
 		this->mtx.unlock();
-
 		
 		memcpy(this->buffer + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));
+		std::cout << "bytes_sent : " << bytes_sent << std::endl;
 		if(this->bytes_sent == -1)
 		{
 			CloseSocket();
@@ -77,6 +77,7 @@ void StepperTCPServer::ThreadHandler()
 
 int StepperTCPServer::CreateSocket()
 {
+#ifdef _WIN32
 	WSAData wsaData;
 	WORD DllVersion = MAKEWORD(2, 1);
 	if (WSAStartup(DllVersion, &wsaData) != 0) {
@@ -89,13 +90,30 @@ int StepperTCPServer::CreateSocket()
 
 	this->sock = socket(AF_INET, SOCK_STREAM, NULL);
 	bind(this->sock, (SOCKADDR*)&this->addr, addrLen);
+#endif
+#ifdef __linux__
+	this->sock = socket(AF_INET, SOCK_STREAM, 0);
+	//fcntl(sock, F_SETFL, O_NONBLOCK);
+	memset(&this->hint, 0, sizeof(hint));
+	hint.sin_family = AF_INET;
+	inet_pton(AF_INET, this->ip.c_str(), &hint.sin_addr.s_addr);
+	//hint.sin_addr.s_addr = inet_addr(this->ip.c_str());//htonl(INADDR_ANY);
+	hint.sin_port = htons(this->port);
+
+	bind(this->sock, (sockaddr*)&hint, sizeof(hint));
+#endif
 
 	return 0;
 }
 
 int StepperTCPServer::CloseSocket()
 {
+#ifdef _WIN32
 	closesocket(this->sock);
+#endif
+#ifdef __linux__
+	close(this->sock);
+#endif
 	return 0;
 }
 
@@ -107,13 +125,18 @@ int StepperTCPServer::Listen()
 
 int StepperTCPServer::Accept()
 {
+#ifdef _WIN32
 	this->new_conn = accept(this->sock, (SOCKADDR*)&this->addr, &this->addrLen);
+#endif
+#ifdef __linux__
+	this->new_conn = accept(this->sock, (sockaddr*)&this->cli, &this->len);
+#endif
 	return 0;
 }
 
 int StepperTCPServer::Send()
 {
-	this->bytes_sent = send(new_conn, this->message, kMessageSize, NULL);
+	this->bytes_sent = send(new_conn, this->message, kMessageSize, 0);
 	if (bytes_sent != -1)
 	{
 		this->message_no++;

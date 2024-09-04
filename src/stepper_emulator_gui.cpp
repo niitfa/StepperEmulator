@@ -1,8 +1,10 @@
 #include "stepper_emulator_gui.h"
 #include <iostream>
 #include <string>
+#include <istream>
 
-void StepperEmulatorGUI::Run()
+
+void StepperEmulatorGUI::Run(int val_1, int val_2)
 {
 	std::cout << "Creating server: " 
 		<< this->ip << " port " << this->port << "." << std::endl;
@@ -19,9 +21,16 @@ void StepperEmulatorGUI::Menu()
 		std::cout << "\n" << "Select option:\n"
 			"1. Change longitudal axis position.\n" <<
 			"2. Change angular axis position.\n" <<
-			"3. Reset all  positions.\n\n" <<
+			"3. Reset all positions.\n\n" <<
 			"> ";
+		/* Input */
+#ifdef _WIN32
 		std::cin >> option_str;
+#endif
+#ifdef __linux__
+		std::cin >> option_str;
+#endif
+ 
 		try
 		{
 			option = std::stoi(option_str);

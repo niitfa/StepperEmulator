@@ -8,9 +8,20 @@
 #include <WS2tcpip.h>
 #endif
 
+#ifdef __linux__
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#endif
+
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <thread>
 
 class StepperTCPServer
 {
@@ -29,9 +40,17 @@ class StepperTCPServer
 	int port;
 
 	/* Socket */
+#ifdef _WIN32
 	SOCKET sock, new_conn;
 	SOCKADDR_IN addr;
 	int addrLen = sizeof(addr);
+#endif
+
+#ifdef __linux__
+	int sock, new_conn;
+	sockaddr_in hint, cli;
+	socklen_t len = sizeof(cli);
+#endif
 	int bytes_sent = -1;
 
 	/* Thread info */
