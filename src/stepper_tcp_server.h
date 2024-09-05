@@ -49,7 +49,7 @@ class StepperTCPServer
 #ifdef __linux__
 	int sock, new_conn;
 	sockaddr_in hint, cli;
-	socklen_t len = sizeof(cli);
+	socklen_t len = sizeof(hint);
 #endif
 	int bytes_sent = -1;
 

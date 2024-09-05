@@ -51,12 +51,11 @@ void StepperTCPServer::ThreadHandler()
 	{
 		this->mtx.lock();
 		memcpy(this->message, this->buffer, kMessageSize);
-		this->mtx.unlock();
-		
+		this->mtx.unlock();	
 		memcpy(this->buffer + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));
-		std::cout << "bytes_sent : " << bytes_sent << std::endl;
+		//std::cout << "bytes_sent : " << bytes_sent << std::endl;
 		if(this->bytes_sent == -1)
-		{
+		{	
 			CloseSocket();
 			CreateSocket();
 			Listen();
@@ -96,10 +95,8 @@ int StepperTCPServer::CreateSocket()
 	//fcntl(sock, F_SETFL, O_NONBLOCK);
 	memset(&this->hint, 0, sizeof(hint));
 	hint.sin_family = AF_INET;
-	inet_pton(AF_INET, this->ip.c_str(), &hint.sin_addr.s_addr);
-	//hint.sin_addr.s_addr = inet_addr(this->ip.c_str());//htonl(INADDR_ANY);
+	this->hint.sin_addr.s_addr = INADDR_ANY;
 	hint.sin_port = htons(this->port);
-
 	bind(this->sock, (sockaddr*)&hint, sizeof(hint));
 #endif
 
@@ -119,7 +116,7 @@ int StepperTCPServer::CloseSocket()
 
 int StepperTCPServer::Listen()
 {
-	listen(this->sock, 1);
+	int res = listen(this->sock, 10);
 	return 0;
 }
 
@@ -128,15 +125,28 @@ int StepperTCPServer::Accept()
 #ifdef _WIN32
 	this->new_conn = accept(this->sock, (SOCKADDR*)&this->addr, &this->addrLen);
 #endif
-#ifdef __linux__
+#ifdef __linux__	
 	this->new_conn = accept(this->sock, (sockaddr*)&this->cli, &this->len);
+	if(new_conn == -1)
+	{
+		//std::cout << "Accept fail " <<  strerror(errno) << std::endl;
+	}
+	else
+	{
+		//std::cout << "Accepted!" << std::endl;
+	}
 #endif
 	return 0;
 }
 
 int StepperTCPServer::Send()
 {
+#ifdef _WIN32
 	this->bytes_sent = send(new_conn, this->message, kMessageSize, 0);
+#endif
+#ifdef __linux__
+	this->bytes_sent = send(new_conn, this->message, kMessageSize, MSG_NOSIGNAL | MSG_DONTWAIT);
+#endif
 	if (bytes_sent != -1)
 	{
 		this->message_no++;
