@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 {
     std::string filename = "message.txt";
 
-    StepperTCPServer* server = new StepperTCPServer("127.0.0.1", 6101);
+    StepperTCPServer* server = new StepperTCPServer("127.0.0.1", 11151);
     int val1 = 0;
     int val2 = 0;
 
@@ -22,7 +22,8 @@ int main(int argc, char* argv[])
         read_file(&val1, &val2, filename);
         server->SetLongEncoderValue(val1);
         server->SetAngEncoderValue(val2);
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        //std::this_thread::sleep_for(std::chrono::seconds(1));
     }
  
     return 0;

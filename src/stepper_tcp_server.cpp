@@ -61,13 +61,14 @@ void StepperTCPServer::ThreadHandler()
 			Listen();
 			Accept();
 			Send();
+
 		}
 		else
 		{
 			Send();
 		}
 		memset(this->message, 0, kMessageSize);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	memset(this->message, 0, kMessageSize);
 	CloseSocket();
@@ -92,6 +93,8 @@ int StepperTCPServer::CreateSocket()
 #endif
 #ifdef __linux__
 	this->sock = socket(AF_INET, SOCK_STREAM, 0);
+	//int opt = 1;
+	//setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(char *)&opt,sizeof(opt));
 	//fcntl(sock, F_SETFL, O_NONBLOCK);
 	memset(&this->hint, 0, sizeof(hint));
 	hint.sin_family = AF_INET;
@@ -109,14 +112,18 @@ int StepperTCPServer::CloseSocket()
 	closesocket(this->sock);
 #endif
 #ifdef __linux__
+	shutdown(this->sock, SHUT_RDWR);	
 	close(this->sock);
+	
+	shutdown(this->new_conn, SHUT_RDWR);
+	close(this->new_conn);
 #endif
 	return 0;
 }
 
 int StepperTCPServer::Listen()
 {
-	int res = listen(this->sock, 10);
+	int res = listen(this->sock, 1);
 	return 0;
 }
 
@@ -127,13 +134,15 @@ int StepperTCPServer::Accept()
 #endif
 #ifdef __linux__	
 	this->new_conn = accept(this->sock, (sockaddr*)&this->cli, &this->len);
+	//int opt = 1;
+	//setsockopt(new_conn,SOL_SOCKET,SO_REUSEADDR,(char *)&opt,sizeof(opt));
 	if(new_conn == -1)
 	{
-		//std::cout << "Accept fail " <<  strerror(errno) << std::endl;
+		std::cout << "Accept fail " <<  strerror(errno) << std::endl;
 	}
 	else
 	{
-		//std::cout << "Accepted!" << std::endl;
+		std::cout << "Accepted!" << std::endl;
 	}
 #endif
 	return 0;
@@ -145,7 +154,7 @@ int StepperTCPServer::Send()
 	this->bytes_sent = send(new_conn, this->message, kMessageSize, 0);
 #endif
 #ifdef __linux__
-	this->bytes_sent = send(new_conn, this->message, kMessageSize, MSG_NOSIGNAL | MSG_DONTWAIT);
+	this->bytes_sent = send(new_conn, this->message, kMessageSize, MSG_NOSIGNAL);
 #endif
 	if (bytes_sent != -1)
 	{
