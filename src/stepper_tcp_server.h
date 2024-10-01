@@ -23,9 +23,11 @@
 #include <mutex>
 #include <thread>
 
+#include "emul_drive.h"
+
 class StepperTCPServer
 {
-	/* Message info */
+	/* Output message info */
 	static const int kMessageSize = 12;
 	static const int kBufferSize = kMessageSize;
 	char message[kMessageSize];
@@ -35,11 +37,28 @@ class StepperTCPServer
 	static const int kBytePosLongEncValue = 4;
 	static const int kBytePosAngEncValue = 8;
 
+	/* Input message info */
+	static const int kInputMessageSize = 12;
+	static const int kInputBufferSize = kInputMessageSize;
+	char input_message[kMessageSize];
+	//char input_message_temp[kMessageSize];
+	char input_buffer[kMessageSize];
+
+	int conn_alive = 0;
+
+	static const int kInBytePosCommand = 0;
+	static const int kInBytePosParam1 = 4;
+	static const int kInBytePosParam2 = 8;
+
 	/* Server info */
 	std::string ip;
-	int port;
+	int output_port;
+	int input_port;
 
-	/* Socket */
+	/* Drives */
+	EmulDrive drive_long{1000, 5000, 0x01, 0x02, 0x03};
+	EmulDrive drive_ang {1000, 5000, 0x11, 0x12, 0x13};
+	std::mutex int_mtx;
 #ifdef _WIN32
 	SOCKET sock, new_conn;
 	SOCKADDR_IN addr;
@@ -53,6 +72,13 @@ class StepperTCPServer
 #endif
 	int bytes_sent = -1;
 
+	/* Input socket */
+	#ifdef __linux__
+	int sock_in, new_conn_in;
+	sockaddr_in hint_in, cli_in;
+#endif
+	int bytes_received = -1;
+
 	/* Thread info */
 	std::mutex mtx;
 	std::atomic<bool> started{ false };
@@ -61,7 +87,7 @@ class StepperTCPServer
 
 	uint32_t message_no = 0;
 public:
-	StepperTCPServer(std::string ip, int port);
+	StepperTCPServer(std::string ip, int output_port, int input_port);
 	~StepperTCPServer() = default;
 	int Run();
 	int Stop();
@@ -69,12 +95,19 @@ public:
 	void SetLongEncoderValue(int);
 	void SetAngEncoderValue(int);
 private:
-	void ThreadHandler();
-	int CreateSocket();
-	int CloseSocket();
-	int Listen();
-	int Accept();
-	int Send();
+	void OutputThreadHandler();
+	void InputThreadHandler();
+
+
+	int CreateSocket(int* psock, void* addr, int port);
+	int CloseSocket(int* psock);
+	int Listen(int* psock);
+
+	int AcceptOutput(int* psock, int* pnewsock, void* addr, timeval timeout);
+	int AcceptInput(int* psock, int* pnewsock, void* addr, timeval timeout);
+
+	int Send(int* psock, char* buff, size_t size);
+	int Receive(int* psock, char* buff, size_t size);
 };
 
 #endif

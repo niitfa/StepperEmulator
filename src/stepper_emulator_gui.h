@@ -6,11 +6,12 @@
 #include <mutex>
 #include <atomic>
 
+
 class StepperEmulatorGUI
 {
 	std::string	ip = "127.0.0.1";
 	int	port = 6101;
-	StepperTCPServer* server = new StepperTCPServer(ip, port);
+	StepperTCPServer* server = new StepperTCPServer(ip, port, port);
 
 	std::mutex mtx;
 	std::atomic<bool> stopflag{false};

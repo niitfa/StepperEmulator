@@ -12,20 +12,14 @@ int main(int argc, char* argv[])
 {
     std::string filename = "message.txt";
 
-    StepperTCPServer* server = new StepperTCPServer("127.0.0.1", 11151);
+    StepperTCPServer* server = new StepperTCPServer("127.0.0.1", 11151, 11152);
     int val1 = 0;
     int val2 = 0;
 
     server->Run();
     while(true)
-    {
-        read_file(&val1, &val2, filename);
-        server->SetLongEncoderValue(val1);
-        server->SetAngEncoderValue(val2);
-
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
- 
+        ;
+        
     return 0;
 }
 
@@ -39,15 +33,15 @@ void read_file(int* val1, int* val2, std::string filename)
         std::getline(file, line1);
         std::getline(file, line2);
         try
-		{
-			*val1 = std::stoi(line1);
+        {
+            *val1 = std::stoi(line1);
             *val2 = std::stoi(line2);
-		}
-		catch (...)
-		{
-			*val1 = 0;
+        }
+        catch (...)
+        {
+            *val1 = 0;
             *val2 = 0;
-		}
+        }
     }
     file.close();
 }
