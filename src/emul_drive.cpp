@@ -3,6 +3,7 @@
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
+
 EmulDrive::EmulDrive(float min_velocity, float max_velocity, int move_code,
         int hold_code, int reset_code) :
         min_velocity{min_velocity},

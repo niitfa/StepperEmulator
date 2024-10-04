@@ -60,23 +60,26 @@ class StepperTCPServer
 	EmulDrive drive_ang {1000, 5000, 0x11, 0x12, 0x13};
 	std::mutex int_mtx;
 #ifdef _WIN32
+	/* Output socket*/
 	SOCKET sock, new_conn;
-	SOCKADDR_IN addr;
-	int addrLen = sizeof(addr);
+	SOCKADDR_IN hint, cli;
+	/* Input socket */
+	SOCKET sock_in, new_conn_in;
+	SOCKADDR_IN hint_in, cli_in;
+	int addrLen = sizeof(hint_in);
 #endif
 
+	
 #ifdef __linux__
+	/* Output socket*/
 	int sock, new_conn;
 	sockaddr_in hint, cli;
 	socklen_t len = sizeof(hint);
-#endif
-	int bytes_sent = -1;
-
 	/* Input socket */
-	#ifdef __linux__
 	int sock_in, new_conn_in;
 	sockaddr_in hint_in, cli_in;
 #endif
+	int bytes_sent = -1;
 	int bytes_received = -1;
 
 	/* Thread info */
@@ -99,15 +102,15 @@ private:
 	void InputThreadHandler();
 
 
-	int CreateSocket(int* psock, void* addr, int port);
-	int CloseSocket(int* psock);
-	int Listen(int* psock);
+	int CreateSocket(void* psock, void* addr, int port);
+	int CloseSocket(void* psock);
+	int Listen(void* psock);
 
-	int AcceptOutput(int* psock, int* pnewsock, void* addr, timeval timeout);
-	int AcceptInput(int* psock, int* pnewsock, void* addr, timeval timeout);
+	int AcceptOutput(void* psock, void* pnewsock, void* addr, timeval timeout);
+	int AcceptInput(void* psock, void* pnewsock, void* addr, timeval timeout);
 
-	int Send(int* psock, char* buff, size_t size);
-	int Receive(int* psock, char* buff, size_t size);
+	int Send(void* psock, char* buff, size_t size);
+	int Receive(void* psock, char* buff, size_t size);
 };
 
 #endif

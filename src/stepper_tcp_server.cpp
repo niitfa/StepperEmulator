@@ -1,6 +1,5 @@
 #include "stepper_tcp_server.h"
 #include <iostream>
-#include <poll.h>
 
 /* TODO:
 	1) CreateSocket(..) for Windows
@@ -85,21 +84,23 @@ void StepperTCPServer::OutputThreadHandler()
 
 		if(this->bytes_sent == -1)
 		{	
-			CloseSocket(&this->sock);
-			CloseSocket(&this->new_conn);
-			CreateSocket(&this->sock, &this->hint, this->output_port);
-			Listen(&this->sock);
-			AcceptOutput(&this->sock, &this->new_conn, &this->cli, (timeval){0, 300000});
+			CloseSocket((void*)&this->sock);
+			CloseSocket((void*)&this->new_conn);
+			CreateSocket((void*)&this->sock, (void*)&this->hint, this->output_port);
+			Listen((void*)&this->sock);
+			timeval tv{ 0, 300000 };
+			AcceptOutput(&this->sock, &this->new_conn, &this->cli, tv);
 		}
-		this->bytes_sent = Send(&this->new_conn, this->message, kMessageSize);
+
+		this->bytes_sent = Send((void*)&this->new_conn, this->message, kMessageSize);
 		memset(this->message, 0, kMessageSize);	
 
 		/* Sleep */
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 	memset(this->message, 0, kMessageSize);
-	CloseSocket(&this->sock);
-	CloseSocket(&this->new_conn);
+	CloseSocket((void*)&this->sock);
+	CloseSocket((void*)&this->new_conn);
 	this->started.store(false);
 }
 
@@ -110,15 +111,19 @@ void StepperTCPServer::InputThreadHandler()
 	{
 		if(this->bytes_received == -1 || this->bytes_received == 0)
 		{
-			CloseSocket(&this->sock_in);
-			CloseSocket(&this->new_conn_in);
-			CreateSocket(&this->sock_in, &this->hint_in, this->input_port);
-			Listen(&this->sock_in);
-			AcceptInput(&this->sock_in, &this->new_conn_in, &this->cli_in, (timeval){0, 100000});
+			CloseSocket((void*)&this->sock_in);
+			CloseSocket((void*)&this->new_conn_in);
+			CreateSocket((void*)&this->sock_in, (void*)&this->hint_in, this->input_port);
+			Listen((void*)&this->sock_in);
+			timeval tv{ 0, 100000 };
+			AcceptInput((void*)&this->sock_in, (void*)&this->new_conn_in, (void*)&this->cli_in, tv);
 		}
+		
 
 		// write data to this socket
-		this->bytes_received = Receive(&this->new_conn_in, this->input_message, kInputMessageSize);
+		this->bytes_received = Receive((void*)&this->new_conn_in, this->input_message, kInputMessageSize);
+
+
 		// debug output
 		/* std::cout << "bytes received: " << this->bytes_received << "\t";
 		std::cout << *(int*)(this->input_message + kInBytePosCommand) << " " 
@@ -150,59 +155,64 @@ void StepperTCPServer::InputThreadHandler()
 		
 	}
 	memset(this->input_message, 0, kInputMessageSize);
-	CloseSocket(&this->sock_in);
-	CloseSocket(&this->new_conn_in);
+	CloseSocket((void*)&this->sock_in);
+	CloseSocket((void*)&this->new_conn_in);
 	this->started.store(false);
 }
 
-int StepperTCPServer::CreateSocket(int* psock, void* addr, int port)
+int StepperTCPServer::CreateSocket(void* psock, void* addr, int port)
 {
 #ifdef _WIN32
-	//  WILL NOT WORK ON WINDOWS !!!
 	WSAData wsaData;
 	WORD DllVersion = MAKEWORD(2, 1);
 	if (WSAStartup(DllVersion, &wsaData) != 0) {
 		return 1;
 	}
+	SOCKADDR_IN* phint = (SOCKADDR_IN*)addr;
+	phint->sin_addr.s_addr = inet_addr(this->ip.c_str());
+	phint->sin_port = htons(port);
+	phint->sin_family = AF_INET;
 
-	this->addr.sin_addr.s_addr = inet_addr(this->ip.c_str());
-	this->addr.sin_port = htons(port);
-	this->addr.sin_family = AF_INET;
-
-	*psock = socket(AF_INET, SOCK_STREAM, NULL);
-	bind(*psock, (SOCKADDR*)&this->addr, addrLen);
+	*(SOCKET*)psock = socket(AF_INET, SOCK_STREAM, NULL);
+	bind(*(SOCKET*)psock, (SOCKADDR*)phint, addrLen);
 #endif
 #ifdef __linux__
 	sockaddr_in* phint = (sockaddr_in*) addr;
-	*psock = socket(AF_INET, SOCK_STREAM, 0);
+	*(int*)psock = socket(AF_INET, SOCK_STREAM, 0);
 	memset(phint, 0, sizeof(sockaddr_in));
 	phint->sin_family = AF_INET;
 	phint->sin_addr.s_addr = INADDR_ANY;
 	phint->sin_port = htons(port);
-	bind(*psock, (sockaddr*)phint, sizeof(sockaddr_in));
+	bind(*(int*)psock, (sockaddr*)phint, sizeof(sockaddr_in));
 #endif
 	return 0;
 }
 
-int StepperTCPServer::CloseSocket(int* psock)
+int StepperTCPServer::CloseSocket(void* psock)
 {
 #ifdef _WIN32
-	closesocket(*psock);
+	shutdown(*(SOCKET*)psock, SD_BOTH);
+	closesocket(*(SOCKET*)psock);
 #endif
 #ifdef __linux__
-	shutdown(*psock, SHUT_RDWR);	
-	close(*psock);
+	shutdown(*(int*)psock, SHUT_RDWR);	
+	close(*(int*)psock);
 #endif
 	return 0;
 }
 
-int StepperTCPServer::Listen(int* psock)
+int StepperTCPServer::Listen(void* psock)
 {
-	int res = listen(*psock, 1);
+#ifdef _WIN32
+	int res = listen(*(SOCKET*)psock, 1);
+#endif
+#ifdef __linux__
+	int res = listen(*(int*)psock, 1);
+#endif
 	return res;
 }
 
-int StepperTCPServer::AcceptOutput(int* psock, int* pnewsock, void* addr, timeval timeout)
+int StepperTCPServer::AcceptOutput(void* psock, void* pnewsock, void* addr, timeval timeout)
 {
 /* #ifdef _WIN32
 	*pnewsock = accept(*psock, (SOCKADDR*)&this->addr, &this->addrLen);
@@ -238,36 +248,36 @@ int StepperTCPServer::AcceptOutput(int* psock, int* pnewsock, void* addr, timeva
 	}
 #endif */
 
-
-	socklen_t size = sizeof(sockaddr_in);
-	*pnewsock = accept(*psock, (sockaddr*)addr, &size);
-	if(*pnewsock == -1)
+#ifdef _WIN32
+	int size = sizeof(sockaddr_in);
+	*(SOCKET*)pnewsock = accept(*(SOCKET*)psock, (sockaddr*)addr, &size);
+	if (*(SOCKET*)pnewsock == -1)
 	{
-		//std::cout << "Accept fail " <<  strerror(errno) << std::endl;
 	}
 	else
 	{
 		//std::cout << "Accepted!" << std::endl;
 		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
 	} 
-
-	return *pnewsock;
-}
-
-int StepperTCPServer::AcceptInput(int* psock, int* pnewsock, void* addr, timeval timeout)
-{
+#endif
+#ifdef __linux__
 	socklen_t size = sizeof(sockaddr_in);
-	*pnewsock = accept(*psock, (sockaddr*)addr, &size);
-	if(*pnewsock == -1)
+	*(int*)pnewsock = accept(*(int*)psock, (sockaddr*)addr, &size);
+	if (*(int*)pnewsock == -1)
 	{
-		//std::cout << "Accept fail " <<  strerror(errno) << std::endl;
 	}
 	else
 	{
-		//std::cout << "Accepted!" << std::endl;
-		std::cout << "Input connection accepted, port " << this->input_port << std::endl;
-	} 
+		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
+	}
+#endif
 
+
+	return *(int*)pnewsock;
+}
+
+int StepperTCPServer::AcceptInput(void* psock, void* pnewsock, void* addr, timeval timeout)
+{
 /* #ifdef __linux__	
 	fd_set readfds;
 	FD_ZERO(&readfds);
@@ -298,34 +308,65 @@ int StepperTCPServer::AcceptInput(int* psock, int* pnewsock, void* addr, timeval
 	}
 #endif */
 
-	return *pnewsock;
+#ifdef _WIN32
+	int size = sizeof(sockaddr_in);
+	*(SOCKET*)pnewsock = accept(*(SOCKET*)psock, (sockaddr*)addr, &size);
+	if (*(SOCKET*)pnewsock == -1)
+	{
+	}
+	else
+	{
+		std::cout << "Input connection accepted, port " << this->input_port << std::endl;
+	}
+#endif
+
+#ifdef __linux__
+	socklen_t size = sizeof(sockaddr_in);
+	*(int*)pnewsock = accept(*(int*)psock, (sockaddr*)addr, &size);
+	if (*(int*)pnewsock == -1)
+	{
+	}
+	else
+	{
+		std::cout << "Input connection accepted, port " << this->input_port << std::endl;
+	}
+#endif
+
+	return *(int*)pnewsock;
 }
 
-int StepperTCPServer::Send(int* psock, char* buff, size_t size) // new conn
+int StepperTCPServer::Send(void* psock, char* buff, size_t size) // new conn
 {
-	int res;
 #ifdef _WIN32
-	res = send(*psock, buff, size, 0);
+	int res = send(*(SOCKET*)psock, buff, size, 0);
 #endif
 #ifdef __linux__
-	res = send(*psock, buff, size, MSG_NOSIGNAL);
+	int res = send(*(int*)psock, buff, size, MSG_NOSIGNAL);
 #endif
 	return res;
 }
 
-int StepperTCPServer::Receive(int* psock, char* buff, size_t size)
+int StepperTCPServer::Receive(void* psock, char* buff, size_t size)
 {
+#ifdef _WIN32
+	SOCKET* temp_sock = (SOCKET*)psock;
+#endif
+#ifdef __linux__
+	int* temp_sock = (int*)psock
+#endif
+
 
 	int total_bytes_received = 0;
 	int res = 0;
 	int current_buff_index = 0;
 
-	char temp_buffer[size];
+	//char temp_buffer[size];
+	char* temp_buffer = new char[size];
 	memset(temp_buffer, 0, size);
 
 	while(total_bytes_received != size)
 	{
-		int res = recv(*psock, temp_buffer, size, MSG_WAITALL);
+		int res = recv(*temp_sock, temp_buffer, size, MSG_WAITALL);
 		if(res == 0)  return res;
 		if(res < 0)  return res;
 
@@ -334,5 +375,6 @@ int StepperTCPServer::Receive(int* psock, char* buff, size_t size)
 		memcpy(buff + current_buff_index, temp_buffer, res);
 		current_buff_index += res;		
 	}
+	delete[] temp_buffer;
 	return total_bytes_received;
 }
