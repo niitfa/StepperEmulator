@@ -242,7 +242,7 @@ int StepperTCPServer::AcceptOutput(int* psock, int* pnewsock, void* addr, timeva
 	else
 	{
 		//std::cout << "Accepted!" << std::endl;
-		std::cout << "Output connection accepted, port " << this->input_port << std::endl;
+		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
 	} 
 
 	return *pnewsock;
