@@ -130,7 +130,11 @@ void StepperTCPServer::InputThreadHandler()
 			int val_1 = *(int*)(this->input_message + kInBytePosCommand);
 			int val_2 = *(int*)(this->input_message + kInBytePosParam1);
 			int val_3 = *(int*)(this->input_message + kInBytePosParam2);
-			std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << std::endl;
+			//std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << std::endl;
+
+			//std::cout << "Received: 0x" << std::hex << val_1 << val_2 << val_3 << std::dec << std::endl;
+			printf("Received: 0x%08x%08x%08x\n", val_1, val_2, val_3);
+
 			// Handling message
 			int_mtx.lock();
 			drive_long.ParseMessage(val_1, val_2, val_3);
@@ -233,6 +237,8 @@ int StepperTCPServer::AcceptOutput(int* psock, int* pnewsock, void* addr, timeva
 		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
 	}
 #endif */
+
+
 	socklen_t size = sizeof(sockaddr_in);
 	*pnewsock = accept(*psock, (sockaddr*)addr, &size);
 	if(*pnewsock == -1)
