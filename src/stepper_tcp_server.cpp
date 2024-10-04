@@ -132,8 +132,8 @@ void StepperTCPServer::InputThreadHandler()
 			int val_3 = *(int*)(this->input_message + kInBytePosParam2);
 			//std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << std::endl;
 
-			//std::cout << "Received: 0x" << std::hex << val_1 << val_2 << val_3 << std::dec << std::endl;
-			printf("Received: 0x%08x%08x%08x\n", val_1, val_2, val_3);
+			std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << "\t";
+			printf("hex: 0x%08x%08x%08x\n", val_1, val_2, val_3);
 
 			// Handling message
 			int_mtx.lock();
