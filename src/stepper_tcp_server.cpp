@@ -127,18 +127,14 @@ void StepperTCPServer::InputThreadHandler()
 
 		if(bytes_received == kInputMessageSize)
 		{
+			int val_1 = *(int*)(this->input_message + kInBytePosCommand);
+			int val_2 = *(int*)(this->input_message + kInBytePosParam1);
+			int val_3 = *(int*)(this->input_message + kInBytePosParam2);
+			std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << std::endl;
 			// Handling message
 			int_mtx.lock();
-			drive_long.ParseMessage(
-				*(int*)(this->input_message + kInBytePosCommand),
-				*(int*)(this->input_message + kInBytePosParam1),
-				*(int*)(this->input_message + kInBytePosParam2)
-			);
-			drive_ang.ParseMessage(
-				*(int*)(this->input_message + kInBytePosCommand),
-				*(int*)(this->input_message + kInBytePosParam1),
-				*(int*)(this->input_message + kInBytePosParam2)
-			);
+			drive_long.ParseMessage(val_1, val_2, val_3);
+			drive_ang.ParseMessage(val_1, val_2, val_3);
 			int_mtx.unlock();
 
 		}
