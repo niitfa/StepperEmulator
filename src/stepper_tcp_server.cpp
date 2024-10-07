@@ -352,7 +352,7 @@ int StepperTCPServer::Receive(void* psock, char* buff, size_t size)
 	SOCKET* temp_sock = (SOCKET*)psock;
 #endif
 #ifdef __linux__
-	int* temp_sock = (int*)psock
+	int* temp_sock = (int*)psock;
 #endif
 
 
