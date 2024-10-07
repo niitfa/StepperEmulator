@@ -1,11 +1,6 @@
 #include "stepper_tcp_server.h"
 #include <iostream>
 
-/* TODO:
-	1) CreateSocket(..) for Windows
-	2) Accept(...) for Windows
-*/
-
 StepperTCPServer::StepperTCPServer(std::string ip, int output_port, int input_port) : 
 	ip{ip},
 	output_port{output_port},
@@ -59,27 +54,42 @@ void StepperTCPServer::SetAngEncoderValue(int val)
 /* Server thread section */
 void StepperTCPServer::OutputThreadHandler()
 {
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 
-		this->initialized.store(true);
-		while (!this->stopped.load())
-		{
+	this->initialized.store(true);
+	while (!this->stopped.load())
+	{		
+	message_no++;
 
-			
-		message_no++;
-		//this->mtx.lock();
-		//memcpy(this->message, this->buffer, kMessageSize);
-		//this->mtx.unlock();	
+	this->int_mtx.lock();
 
-		// Fill message frome emul_drive objects
-		int pos_long 	= drive_long.GetPosition();
-		//std::cout << "StepperTCPServer::OutputThreadHandler(): pos_long " << pos_long << std::endl;
-		int pos_ang 	= drive_ang.GetPosition();
+	// здесь читать файл!!!
+	if(file_reader.ReadFile())
+	{
+		drive_long.SetPosition(file_reader.GetValue(0));
+		drive_ang.SetPosition(file_reader.GetValue(1));
+	}
 
-		memcpy(this->message + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));
-		memcpy(this->message + this->kBytePosLongEncValue, &pos_long, sizeof(pos_long));
-		memcpy(this->message + this->kBytePosAngEncValue, &pos_ang, sizeof(pos_ang));
+	int pos_long 	= drive_long.GetPosition();
+	int pos_ang 	= drive_ang.GetPosition();
+	this->int_mtx.unlock();
+
+	/* Old */
+	//memcpy(this->message + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));
+	//memcpy(this->message + this->kBytePosLongEncValue, &pos_long, sizeof(pos_long));
+	//memcpy(this->message + this->kBytePosAngEncValue, &pos_ang, sizeof(pos_ang));
+	/* End Old*/
+
+	/* New */
+	memcpy(this->buffer + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));
+	memcpy(this->buffer + this->kBytePosLongEncValue, &pos_long, sizeof(pos_long));
+	memcpy(this->buffer + this->kBytePosAngEncValue, &pos_ang, sizeof(pos_ang));
+
+	this->mtx.lock();
+	memcpy(this->message, this->buffer, kMessageSize);
+	this->mtx.unlock();	
+	/* End new */
 
 
 		if(this->bytes_sent == -1)
@@ -118,24 +128,15 @@ void StepperTCPServer::InputThreadHandler()
 			timeval tv{ 0, 100000 };
 			AcceptInput((void*)&this->sock_in, (void*)&this->new_conn_in, (void*)&this->cli_in, tv);
 		}
-		
 
 		// write data to this socket
 		this->bytes_received = Receive((void*)&this->new_conn_in, this->input_message, kInputMessageSize);
-
-
-		// debug output
-		/* std::cout << "bytes received: " << this->bytes_received << "\t";
-		std::cout << *(int*)(this->input_message + kInBytePosCommand) << " " 
-			<< *(int*)(this->input_message + kInBytePosParam1) << " "
-			<< *(int*)(this->input_message + kInBytePosParam2) << "\n"; */
 
 		if(bytes_received == kInputMessageSize)
 		{
 			int val_1 = *(int*)(this->input_message + kInBytePosCommand);
 			int val_2 = *(int*)(this->input_message + kInBytePosParam1);
 			int val_3 = *(int*)(this->input_message + kInBytePosParam2);
-			//std::cout << "Received: " << val_1 << " " << val_2 << " " << val_3 << std::endl;
 
 			std::cout << "Received 12 bytes: 0-3 bytes: " << val_1 << "; 3-7 bytes: " << val_2 << ";  8-11 bytes = " << val_3 << "\n\t";
 			printf("hex: 0x%08x%08x%08x\n", val_3, val_2, val_1);
@@ -214,40 +215,6 @@ int StepperTCPServer::Listen(void* psock)
 
 int StepperTCPServer::AcceptOutput(void* psock, void* pnewsock, void* addr, timeval timeout)
 {
-/* #ifdef _WIN32
-	*pnewsock = accept(*psock, (SOCKADDR*)&this->addr, &this->addrLen);
-#endif
-#ifdef __linux__	
-	fd_set readfds;
-	FD_ZERO(&readfds);
-	FD_SET(*psock, &readfds);
-
-	int sel = select(*psock + 1 , &readfds , NULL , NULL , &timeout);
-	//int sel = select(*psock + 1, NULL, &readfds, NULL, &timeout);
-	if(sel == 0)
-	{
-		std::cout << "Select timeout " << std::endl;
-		return -2;
-	}
-	if(sel == -1)
-	{
-		std::cout << "Select error " << std::endl;
-		return -3;
-	}
-
-	socklen_t size = sizeof(sockaddr_in);
-	std::cout << "Output block...\n";
-	*pnewsock = accept(*psock, (sockaddr*)addr, &size);
-	if(*pnewsock == -1)
-	{
-		std::cout << "Accept fail " <<  strerror(errno) << std::endl;
-	}
-	else
-	{
-		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
-	}
-#endif */
-
 #ifdef _WIN32
 	int size = sizeof(sockaddr_in);
 	*(SOCKET*)pnewsock = accept(*(SOCKET*)psock, (sockaddr*)addr, &size);
@@ -256,7 +223,6 @@ int StepperTCPServer::AcceptOutput(void* psock, void* pnewsock, void* addr, time
 	}
 	else
 	{
-		//std::cout << "Accepted!" << std::endl;
 		std::cout << "Output connection accepted, port " << this->output_port << std::endl;
 	} 
 #endif
@@ -278,36 +244,6 @@ int StepperTCPServer::AcceptOutput(void* psock, void* pnewsock, void* addr, time
 
 int StepperTCPServer::AcceptInput(void* psock, void* pnewsock, void* addr, timeval timeout)
 {
-/* #ifdef __linux__	
-	fd_set readfds;
-	FD_ZERO(&readfds);
-	FD_SET(*psock, &readfds);
-
-	int sel = select(*psock + 1 , &readfds , NULL , NULL , &timeout);
-	//int sel = select(*psock + 1, NULL, &readfds, NULL, &timeout);
-	if(sel == 0)
-	{
-		//std::cout << "Select timeout " << std::endl;
-		return -2;
-	}
-	if(sel == -1)
-	{
-		//std::cout << "Select error " << std::endl;
-		return -3;
-	}
-
-	socklen_t size = sizeof(sockaddr_in);
-	*pnewsock = accept(*psock, (sockaddr*)addr, &size);
-	if(*pnewsock == -1)
-	{
-		//std::cout << "Accept fail " <<  strerror(errno) << std::endl;
-	}
-	else
-	{
-		std::cout << "Input connection accepted, port " << this->input_port << std::endl;
-	}
-#endif */
-
 #ifdef _WIN32
 	int size = sizeof(sockaddr_in);
 	*(SOCKET*)pnewsock = accept(*(SOCKET*)psock, (sockaddr*)addr, &size);

@@ -24,9 +24,11 @@
 #include <thread>
 
 #include "emul_drive.h"
+#include "stepper_position_reader.h"
 
 class StepperTCPServer
 {
+	StepperPositionReader file_reader{"message.txt"};
 	/* Output message info */
 	static const int kMessageSize = 12;
 	static const int kBufferSize = kMessageSize;
@@ -58,6 +60,7 @@ class StepperTCPServer
 	/* Drives */
 	EmulDrive drive_long{1000, 5000, 0x01, 0x02, 0x03};
 	EmulDrive drive_ang {1000, 5000, 0x11, 0x12, 0x13};
+
 	std::mutex int_mtx;
 #ifdef _WIN32
 	/* Output socket*/

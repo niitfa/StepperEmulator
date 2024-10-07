@@ -29,6 +29,7 @@ public:
     ~EmulDrive() = default;
 
     int GetPosition();
+    void SetPosition(int pos);
     void ParseMessage(int command_code, int param1, int param2);
 private:
 

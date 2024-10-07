@@ -76,3 +76,9 @@ int EmulDrive::GetPosition()
     Update();
     return (int)actual_position;
 }
+
+void EmulDrive::SetPosition(int pos)
+{
+    this->actual_position = pos;
+    Hold();
+}
