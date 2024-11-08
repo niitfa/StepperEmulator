@@ -67,13 +67,20 @@ void StepperTCPServer::OutputThreadHandler()
 	// здесь читать файл!!!
 	if(file_reader.ReadFile())
 	{
-		drive_long.SetPosition(file_reader.GetValue(0));
-		drive_ang.SetPosition(file_reader.GetValue(1));
+		//std::cout << "File reading!!!\n";
+		//drive_long.SetPosition(file_reader.GetValue(0));
+		//drive_ang.SetPosition(file_reader.GetValue(1));
+		drive_long.ParseMessage(1, file_reader.GetValue(0), file_reader.GetValue(1));
+		drive_ang.ParseMessage(17, file_reader.GetValue(2), file_reader.GetValue(3));
+
 	}
+
+	//int pos_long 	= drive_long.GetPosition();
+	//int pos_ang 	= drive_ang.GetPosition();
+	this->int_mtx.unlock();
 
 	int pos_long 	= drive_long.GetPosition();
 	int pos_ang 	= drive_ang.GetPosition();
-	this->int_mtx.unlock();
 
 	/* Old */
 	//memcpy(this->message + this->kBytePosMessageID, &this->message_no, sizeof(this->message_no));

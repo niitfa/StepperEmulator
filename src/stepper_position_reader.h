@@ -7,9 +7,9 @@
 class StepperPositionReader
 {
     std::string filename;
-    int vec_size = 2;
-    std::vector<int> curr_data {vec_size, 0};
-    std::vector<int> prev_data {vec_size, 0};
+    int vec_size = 4;
+    std::vector<int> curr_data;
+    std::vector<int> prev_data;
 public:
     StepperPositionReader(std::string);
     int ReadFile();
